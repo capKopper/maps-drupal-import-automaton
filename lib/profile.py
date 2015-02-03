@@ -68,8 +68,10 @@ class Profile(object):
         self.state_timestamp = "0"
         self.source_object_files = 0
         self.log_dir = log_dir
+        # queues
         self.todo_queue = []
         self.active_queue = []
+        # external "components"
         self.logger = logger
         self.drupal = drupal
 
