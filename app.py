@@ -41,6 +41,9 @@ def main():
         # load given profile
         logger.info("Loading profile ...")
         pf.load(cfg.config, cfg.profile)
+        logger.info("Setting alerters for the profile ...")
+        pf.set_alerters(cfg.config)
+
         # profile checkings
         logger.info("Checking source and target directories ...")
         pf.check_config_dir("source.directory")

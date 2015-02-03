@@ -12,6 +12,9 @@ from lib.tools import add_symlink
 from lib.identifier import SourceIdentifierInterface as SourceIdentifierInterface
 from lib.identifier import SourceIdentifierTimestamp as SourceIdentifierTimestamp
 
+from lib.transport import AlertTransportMail as AlertTransportMail
+
+
 class ProfileError(Exception):
 
     """Common exception."""
@@ -74,6 +77,7 @@ class Profile(object):
         # external "components"
         self.logger = logger
         self.drupal = drupal
+        self.alerters = []
 
     def load(self, config, profile_key):
         """
@@ -119,6 +123,53 @@ class Profile(object):
                                        self.config["alias"] + ".json")
         self.lock_file = os.path.join(config["state_dir"],
                                       self.config["alias"] + ".lock")
+
+    def set_alerters(self, global_config):
+        """Set alerters for the current profile."""
+        try:
+            for alerter in global_config["alert"]:
+                # get the handler and contruct the class name
+                # - class name is format like this "AlertTransport<Handler>"
+                alerter_handler = alerter["handler"]
+                alerter_class_id = "AlertTransport" + \
+                                   alerter_handler[0].upper() + \
+                                   alerter_handler[1:]
+                try:
+                    # new alerter instance
+                    alerter_class = globals()[alerter_class_id]
+                    if alerter_handler == "mail":
+                        try:
+                            # get mail parameters
+                            _host = alerter["config"]["smtp_host"]
+                            _port = alerter["config"]["smtp_port"]
+                            _user = alerter["config"]["smtp_user"]
+                            _password = alerter["config"]["smtp_password"]
+                            _sender = alerter["config"]["sender"]
+                            _recipients = alerter["config"]["recipients"]
+                            _subject = alerter["config"]["subject"]
+                            _message = alerter["config"]["message"]
+                            try:
+                                _headers = alerter["config"]["headers"]
+                            except KeyError:
+                                _headers = ""
+                            # add to the alerters array
+                            self.alerters.append(alerter_class(_host, _port,
+                                                 _user, _password, True,
+                                                 _sender, _recipients,
+                                                 _subject, _message, _headers))
+
+                            self.logger.info("alerter '%s' was correcty initialize" %
+                                             alerter_class_id)
+
+                        except KeyError as e:
+                            self.logger.error("AlertTransportMailConfigError(%s key error)" % e)
+
+                except KeyError as e:
+                    self.logger.warning("AlertTransportNotExists(%s)" %
+                                        alerter_handler)
+
+        except KeyError as e:
+            self.logger.warning("no alert transport was found (%s)" % e)
 
     def check_config_dir(self, directory):
         """
@@ -270,12 +321,10 @@ class Profile(object):
                     self._set_target_symlinks()
                     self._run_operations()
                 else:
-                    # # TODO: if no file is found send an email
-                    # # TODO: blocking error ?
                     self.logger.error("[active/%s] config file '%s' is absent"
                                      % (job_id,
                                         cfg_file))
-                    self.logger.error("=> **TODO: send an email**")
+                    self._send_alert("the configuration file is absent '%s'" % cfg_file)
 
                 # remove the job from the [active] queue
                 self.active_queue = []
@@ -356,8 +405,9 @@ class Profile(object):
     def _acquire_lock(self, job_info):
         """Acquire the lock file."""
         if os.path.exists(self.lock_file):
-            raise ProfileProcessingError("lock file '%s' already exists" %
-                                         self.lock_file)
+            error_msg = "lock file '%s' already exists" % self.lock_file
+            self._send_alert(error_msg)
+            raise ProfileProcessingError(error_msg)
         else:
             f = open(self.lock_file, 'w')
             f.write(job_info)
@@ -481,8 +531,11 @@ class Profile(object):
         os.chdir(cwd)
         shutil.rmtree(logdir)
 
-
-
+    def _send_alert(self, message=None):
+        """Send alert message."""
+        self.logger.warning("sending alert message")
+        for alerter in self.alerters:
+            alerter.send(message)
 
 
 
