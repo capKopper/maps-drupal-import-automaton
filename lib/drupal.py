@@ -17,7 +17,7 @@ class Drupal(object):
         self.drush_bin = ""
         self.valid_instance = False
         if drupal_root is None or drupal_root == "":
-            raise DrupalInitError("drupal_root isn't defined")
+            raise DrupalInitError("'drupal_root' isn't defined")
 
     def check_drush_bin(self, drush_bin=None):
         """

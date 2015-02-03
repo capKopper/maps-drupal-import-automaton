@@ -23,36 +23,39 @@ def main():
         cfg = Config.Config(cfg_file)
         cfg.parse_args()
         # load configuration
-        logger.info("loading configuration file (%s)" % cfg_file)
+        logger.info("Loading configuration file (%s) ..." % cfg_file)
         cfg.load()
 
         # drupal checks
         drupal = Drupal.Drupal(cfg.get_value("drupal.root"), cfg.get_value("drupal.uri"))
-        logger.info("checking if drush binary is installed")
+        logger.info("Checking if drush binary is installed ...")
         drupal.check_drush_bin()
-        logger.info("checking that '%s' is a valid drupal instance" %
+        logger.info("Checking that '%s' is a valid drupal instance ..." %
                     drupal.root)
         ## drupal.check_instance()
 
         # init profile
         pf = Profile.Profile(drupal, cfg.get_value("log.directory"), logger)
+
         # load given profile
-        logger.info("loading profile")
+        logger.info("Loading profile ...")
         pf.load(cfg.config, cfg.profile)
         # profile checkings
-        logger.info("checking source and target directories")
+        logger.info("Checking source and target directories ...")
         pf.check_config_dir("source.directory")
         pf.check_config_dir("target.directory")
-        logger.info("checking target config files")
+        logger.info("Checking target config files ...")
         pf.check_config_file("target.objects")
         pf.check_config_file("target.config")
-        #
+
+        # process
+        logger.info("Get current profile state ...")
         pf.get_state()
-        logger.info("queuing...")
+        logger.info("Queuing ...")
         todo_jobs = pf.queuing()
         logger.info("[todo] %s files has been added in the queue" %
                     todo_jobs)
-        logger.info("[todo] processing...")
+        logger.info("[todo] processing ...")
         pf.process_todo_q()
 
 
