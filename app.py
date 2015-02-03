@@ -58,17 +58,6 @@ def main():
         logger.info("[todo] processing ...")
         pf.process_todo_q()
 
-
-        # # debug
-        # print "--------------------------"
-        # print drupal.drush_bin
-        # print drupal.root
-        # print drupal.valid_instance
-        # print pf.config
-        # print pf.debug()
-        # print "--------------------------"
-
-
     # fatal errors
     except (Config.ConfigError,
             Config.ConfigParserError,
