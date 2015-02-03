@@ -67,11 +67,11 @@ class Profile(object):
         self.state_file = ""
         self.state_timestamp = "0"
         self.source_object_files = 0
+        self.log_dir = log_dir
         self.todo_queue = []
         self.active_queue = []
         self.logger = logger
         self.drupal = drupal
-        self.log_dir = log_dir
 
     def load(self, config, profile_key):
         """
@@ -90,7 +90,6 @@ class Profile(object):
             key = (int)(profile_key)
             self.id = key
             access_by = "id"
-
         self.logger.debug("profile will be access by his '%s'" % access_by)
 
         # check if the profile exists into config...
@@ -411,7 +410,7 @@ class Profile(object):
     def _update_operation_state(self, operation, start_time, end_time):
         """Update the operation state in global profile state."""
         self.logger.info("updating '%s' operation in profile state" %
-                          operation)
+                         operation)
         # get current profile state ...
         with open(self.state_file, "r") as json_current:
             state = json.load(json_current)
