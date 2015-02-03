@@ -47,6 +47,12 @@ class ProfileProcessingError(Exception):
     pass
 
 
+class ProfileProcessingError(Exception):
+
+    """Processing exception."""
+
+    pass
+
 
 class Profile(object):
 
