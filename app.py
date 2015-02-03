@@ -27,7 +27,8 @@ def main():
         cfg.load()
 
         # drupal checks
-        drupal = Drupal.Drupal(cfg.get_value("drupal.root"), cfg.get_value("drupal.uri"))
+        drupal = Drupal.Drupal(cfg.get_value("drupal.root"),
+                               cfg.get_value("drupal.uri"))
         logger.info("Checking if drush binary is installed ...")
         drupal.check_drush_bin()
         logger.info("Checking that '%s' is a valid drupal instance ..." %
