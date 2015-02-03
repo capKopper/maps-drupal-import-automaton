@@ -175,7 +175,7 @@ class Profile(object):
         try:
             src_dir = self.config["source"]["directory"]
             # get the filter pattern
-            src_obj_filter = self.__source_filter()
+            src_obj_filter = self._source_filter()
             self.logger.debug("filter => '%s'" % src_obj_filter)
             # put valid files into [todo] queue
             for f in os.listdir(src_dir):
@@ -191,6 +191,48 @@ class Profile(object):
 
         except KeyError:
             raise ProfileError("no value found for source.directory")
+
+    def _source_filter(self):
+        """Return the filter pattern."""
+        param_id = self._detect_source_params()
+        cls_str = self._detect_source_param_class(param_id)
+        if cls_str is None:
+            raise ProfileError("parameter '%s' isn't defined in config" %
+                               param_id)
+        else:
+            self.logger.debug("source objects class => '%s'" % cls_str)
+            cls = globals()[cls_str]
+            instance = cls(param_id, "$", self.config["source"]["objects"])
+            return instance.get_pattern()
+
+    def _detect_source_params(self):
+        """
+        Return the first parameter present into the source.objects definition.
+
+        Identifier start with the '$' character and can containt
+        - minus alphabeticalic character (a-z)
+        - underscore character '_'
+        - hyphen character '-'
+        If others parameters are present they are ignored
+        """
+        src_obj_def = self.config["source"]["objects"]
+        id_pattern = r"\w+\$([a-z_-]+)(\$.*)?\.xml"
+        regex_id = re.match(r'%s' % id_pattern, src_obj_def)
+        # strip the last character of the first parameter when
+        # others arguments are present
+        if regex_id.group(2) is None:
+            first_param = regex_id.group(1)
+        else:
+            first_param = regex_id.group(1)[:-1]
+
+        return first_param
+
+    def _detect_source_param_class(self, param):
+        """Return the class associated with the given param."""
+        if self.config["source"]["parameter"]["name"] == param:
+            return self.config["source"]["parameter"]["class"]
+        else:
+            return None
 
     def process_todo_q(self):
         """
@@ -213,13 +255,13 @@ class Profile(object):
                                   % (job_id,
                                      self.active_queue[0]["objects_filename"]))
                 # ...and process it
-                has_config, cfg_file = self.__check_object_config()
+                has_config, cfg_file = self._check_object_config()
                 if has_config:
                     self.logger.debug("[active/%s] config file '%s' is present"
                                       % (job_id,
                                          cfg_file))
-                    self.__set_target_symlinks()
-                    self.__run_operations()
+                    self._set_target_symlinks()
+                    self._run_operations()
                 else:
                     # # TODO: if no file is found send an email
                     # # TODO: blocking error ?
@@ -236,75 +278,7 @@ class Profile(object):
 
         self.logger.debug("[todo] all files has been processed")
 
-    def __run_operations(self):
-        """
-        Run all the operations for the [active] job.
-
-        For each operation
-        - acquire a lock
-        - run the operations
-        - release the lock
-
-        A the end of the process, we archive a given directory and some files.
-        Generally this directory is the logdir of all operations.
-        """
-        # get job informations
-        job = self.active_queue[0]
-        job_id = job["id"]
-        job_logdir = self.__create_logdir(job_id)
-
-        for operation in self.config["operations"]:
-            self.__acquire_lock(job_id + "," + operation)
-            self.__run_operation(operation, job_logdir)
-            self.__release_lock(job_id + "," + operation)
-
-        files_to_archives = [job["objects_filename"], job["config_filename"]]
-        self.__archive_logs(job_logdir, files_to_archives)
-        self.__update_state(job_id)
-
-    def __detect_source_params(self):
-        """
-        Return the first parameter present into the source.objects definition.
-
-        Identifier start with the '$' character and can containt
-        - minus alphabeticalic character (a-z)
-        - underscore character '_'
-        - hyphen character '-'
-        If others parameters are present they are ignored
-        """
-        src_obj_def = self.config["source"]["objects"]
-        id_pattern = r"\w+\$([a-z_-]+)(\$.*)?\.xml"
-        regex_id = re.match(r'%s' % id_pattern, src_obj_def)
-        # strip the last character of the first parameter when
-        # others arguments are present
-        if regex_id.group(2) is None:
-            first_param = regex_id.group(1)
-        else:
-            first_param = regex_id.group(1)[:-1]
-
-        return first_param
-
-    def __detect_source_param_class(self, param):
-        """Return the class associated with the given param."""
-        if self.config["source"]["parameter"]["name"] == param:
-            return self.config["source"]["parameter"]["class"]
-        else:
-            return None
-
-    def __source_filter(self):
-        """Return the filter pattern."""
-        param_id = self.__detect_source_params()
-        cls_str = self.__detect_source_param_class(param_id)
-        if cls_str is None:
-            raise ProfileError("parameter '%s' isn't defined in config" %
-                               self.__detect_source_id())
-        else:
-            self.logger.debug("source objects class => '%s'" % cls_str)
-            cls = globals()[cls_str]
-            instance = cls(param_id, "$", self.config["source"]["objects"])
-            return instance.get_pattern()
-
-    def __check_object_config(self):
+    def _check_object_config(self):
         """
         Check to that current active job 'object' file has a 'config'.
 
@@ -321,7 +295,7 @@ class Profile(object):
 
         return os.path.isfile(src_cfg_file), src_cfg_file
 
-    def __set_target_symlinks(self):
+    def _set_target_symlinks(self):
         """Set target symlinks to current active files (objects and config)."""
         try:
             job_id = self.active_queue[0]["id"]
@@ -337,7 +311,42 @@ class Profile(object):
         except KeyError:
             raise ProfileKeyError("no value for target.directory")
 
-    def __acquire_lock(self, job_info):
+    def _run_operations(self):
+        """
+        Run all the operations for the [active] job.
+
+        For each operation
+        - acquire a lock
+        - run the operations
+        - release the lock
+
+        A the end of the process, we archive a given directory and some files.
+        Generally this directory is the logdir of all operations.
+        """
+        # get job informations
+        job = self.active_queue[0]
+        job_id = job["id"]
+        job_logdir = self._create_logdir(job_id)
+
+        for operation in self.config["operations"]:
+            self._acquire_lock(job_id + "," + operation)
+            self._run_operation(operation, job_logdir)
+            self._release_lock(job_id + "," + operation)
+
+        files_to_archives = [job["objects_filename"], job["config_filename"]]
+        self._archive_logs(job_logdir, files_to_archives)
+        self._update_state(job_id)
+
+    def _create_logdir(self, job_id):
+        """Create and return the log directory for the given 'job_id'."""
+        job_logdir = os.path.join(self.log_dir, self.alias, job_id)
+        if not os.path.isdir(job_logdir):
+            self.logger.debug("creating log directory '%s'" % job_logdir)
+            os.makedirs(job_logdir)
+
+        return job_logdir
+
+    def _acquire_lock(self, job_info):
         """Acquire the lock file."""
         if os.path.exists(self.lock_file):
             raise ProfileProcessingError("lock file '%s' already exists" %
@@ -348,21 +357,12 @@ class Profile(object):
             f.close()
             self.logger.debug("lock acquire for '%s'" % job_info)
 
-    def __release_lock(self, job_info):
+    def _release_lock(self, job_info):
         """Release the lock file."""
         os.remove(self.lock_file)
         self.logger.debug("lock release for '%s'" % job_info)
 
-    def __create_logdir(self, job_id):
-        """Create and return the log directory for the given 'job_id'."""
-        job_logdir = os.path.join(self.log_dir, self.alias, job_id)
-        if not os.path.isdir(job_logdir):
-            self.logger.debug("creating log directory '%s'" % job_logdir)
-            os.makedirs(job_logdir)
-
-        return job_logdir
-
-    def __run_operation(self, operation, logdir):
+    def _run_operation(self, operation, logdir):
         """
         Run the given operation.
 
@@ -380,11 +380,11 @@ class Profile(object):
         (drush_out, drush_err) = drush_cmd.communicate()
         op_end_time = datetime.datetime.now()
 
-        self.__log_operation(operation, logdir,
+        self._log_operation(operation, logdir,
                              drush_out, drush_err)
-        self.__update_operation_state(operation, op_start_time, op_end_time)
+        self._update_operation_state(operation, op_start_time, op_end_time)
 
-    def __log_operation(self, operation, logdir, stdout, stderr):
+    def _log_operation(self, operation, logdir, stdout, stderr):
         """Log the operations results."""
         self.logger.debug("log operation results")
         # log filenames
@@ -402,7 +402,7 @@ class Profile(object):
             err.write(stderr)
             err.close()
 
-    def __update_operation_state(self, operation, start_time, end_time):
+    def _update_operation_state(self, operation, start_time, end_time):
         """Update the operation state in global profile state."""
         self.logger.info("updating '%s' operation in profile state" %
                           operation)
@@ -435,7 +435,7 @@ class Profile(object):
             json.dump(state, out_file, indent=4)
         out_file.close()
 
-    def __update_state(self, job_id):
+    def _update_state(self, job_id):
         """
         Update the timestamp in the profile state file.
 
@@ -452,7 +452,7 @@ class Profile(object):
             json.dump(state, json_new, indent=4, sort_keys=True)
             json_new.close()
 
-    def __archive_logs(self, logdir, files):
+    def _archive_logs(self, logdir, files):
         """Archive job logs and source files."""
         cwd = os.getcwd()
         archive_wd = os.path.dirname(logdir)
