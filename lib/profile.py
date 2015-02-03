@@ -283,7 +283,7 @@ class Profile(object):
                 raise ProfileProcessingError("only one job is permitted \
                                               in [active] queue")
 
-        self.logger.debug("[todo] all files has been processed")
+        self.logger.info("[todo] all files has been processed")
 
     def _check_object_config(self):
         """
