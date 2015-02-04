@@ -33,7 +33,7 @@ def main():
         drupal.check_drush_bin()
         logger.info("Checking that '%s' is a valid drupal instance ..." %
                     drupal.root)
-        ## drupal.check_instance()
+        drupal.check_instance()
 
         # init profile
         pf = Profile.Profile(drupal, cfg.get_value("log.directory"), logger)
