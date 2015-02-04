@@ -1,6 +1,5 @@
 """Profile definition."""
 import datetime
-import errno
 import json
 import os
 import tarfile
