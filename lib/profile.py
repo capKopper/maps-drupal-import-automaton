@@ -95,7 +95,7 @@ class Profile(object):
             key = (int)(profile_key)
             self.id = key
             access_by = "id"
-        self.logger.debug("profile will be access by his '%s'" % access_by)
+        self.logger.debug("==> profile will be access by his '%s'" % access_by)
 
         # check if the profile exists into config...
         i = 0
@@ -105,8 +105,8 @@ class Profile(object):
 
             if config["profiles"][i][access_by] == key:
                 profile_found = True
-                self.logger.debug("profile '%s' found (access by '%s')" %
-                      (key, access_by))
+                self.logger.debug("==> profile '%s' found (access by '%s')" %
+                                  (key, access_by))
                 self.config = config["profiles"][i]
 
             i += 1
@@ -157,8 +157,8 @@ class Profile(object):
                                                  _sender, _recipients,
                                                  _subject, _message, _headers))
 
-                            self.logger.info("alerter '%s' was correcty initialize" %
-                                             alerter_class_id)
+                            self.logger.debug("==> alerter '%s' was correcty initialize" %
+                                              alerter_class_id)
 
                         except KeyError as e:
                             self.logger.error("AlertTransportMailConfigError(%s key error)" % e)
@@ -233,7 +233,7 @@ class Profile(object):
             src_dir = self.config["source"]["directory"]
             # get the filter pattern
             src_obj_filter = self._source_filter()
-            self.logger.debug("filter => '%s'" % src_obj_filter)
+            self.logger.debug("==> filter is '%s'" % src_obj_filter)
             # put valid files into [todo] queue
             for f in os.listdir(src_dir):
                 is_object_file = re.match(r'%s' % src_obj_filter, f)
@@ -257,7 +257,7 @@ class Profile(object):
             raise ProfileError("parameter '%s' isn't defined in config" %
                                param_id)
         else:
-            self.logger.debug("source objects class => '%s'" % cls_str)
+            self.logger.debug("==> source objects class is '%s'" % cls_str)
             cls = globals()[cls_str]
             instance = cls(param_id, "$", self.config["source"]["objects"])
             return instance.get_pattern()
@@ -300,7 +300,7 @@ class Profile(object):
           2. check if a config file is present for the [active] job
           3. set target symlinks
         """
-        self.logger.info("[todo] %s files to process" % len(self.todo_queue))
+        self.logger.debug("==> %s files to process" % len(self.todo_queue))
 
         while len(self.todo_queue) > 0:
             if len(self.active_queue) == 0:
@@ -323,7 +323,8 @@ class Profile(object):
                     self.logger.error("[active/%s] config file '%s' is absent"
                                      % (job_id,
                                         cfg_file))
-                    self._send_alert("the configuration file is absent '%s'" % cfg_file)
+                    self._send_alert("the configuration file is absent '%s'" %
+                                     cfg_file)
 
                 # remove the job from the [active] queue
                 self.active_queue = []
@@ -331,7 +332,7 @@ class Profile(object):
                 raise ProfileProcessingError("only one job is permitted \
                                               in [active] queue")
 
-        self.logger.info("[todo] all files has been processed")
+        self.logger.info("all files has been processed")
 
     def _check_object_config(self):
         """

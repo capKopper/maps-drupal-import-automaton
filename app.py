@@ -57,9 +57,9 @@ def main():
         pf.get_state()
         logger.info("Queuing ...")
         todo_jobs = pf.queuing()
-        logger.info("[todo] %s files has been added in the queue" %
+        logger.info("%s files has been added in the [todo] queue" %
                     todo_jobs)
-        logger.info("[todo] processing ...")
+        logger.info("Processing the [todo] queue ...")
         pf.process_todo_q()
 
     # fatal errors
