@@ -438,7 +438,7 @@ class Profile(object):
         op_end_time = datetime.datetime.now()
 
         self._log_operation(operation, logdir,
-                             drush_out, drush_err)
+                            drush_out, drush_err)
         self._update_operation_state(operation, op_start_time, op_end_time)
 
     def _log_operation(self, operation, logdir, stdout, stderr):
