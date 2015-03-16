@@ -17,6 +17,8 @@ if [ "$(whoami)" == "root" ]; then
   echo "Installing dependencies ..."
   apt-get install libyaml-dev python-dev -y
   pip install -r requirements.txt
+  pip install -r requirements-dev.txt
+
 else
   echo "You must be root to run this script"
   exit 1
