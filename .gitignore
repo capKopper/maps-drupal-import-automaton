@@ -4,6 +4,6 @@
 test/
 .venvs/*
 tools/*
-config.yml
+config.yml*
 test*
 .idea/*
