@@ -8,3 +8,4 @@ config.yml*
 test*
 .idea/*
 build/*
+app.spec
