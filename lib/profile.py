@@ -8,6 +8,7 @@ import subprocess
 import re
 
 from lib.tools import add_symlink
+from lib.tools import sorted_ls
 from lib.identifier import SourceIdentifierInterface as SourceIdentifierInterface
 from lib.identifier import SourceIdentifierTimestamp as SourceIdentifierTimestamp
 
@@ -72,6 +73,7 @@ class Profile(object):
         self.log_dir = log_dir
         # queues
         self.todo_queue = []
+        self.todo_queue_limit = 0
         self.active_queue = []
         # external "components"
         self.logger = logger
@@ -122,6 +124,14 @@ class Profile(object):
                                        self.config["alias"] + ".json")
         self.lock_file = os.path.join(config["state_dir"],
                                       self.config["alias"] + ".lock")
+
+        # set the todo queue limit based on configuration
+        # - default is 1
+        try:
+            todo_limit_queue = self.config["todo_queue_limit"]
+            self.todo_queue_limit = todo_limit_queue
+        except KeyError:
+            self.todo_queue_limit = 1
 
     def set_alerters(self, global_config):
         """Set alerters for the current profile."""
@@ -234,15 +244,20 @@ class Profile(object):
             # get the filter pattern
             src_obj_filter = self._source_filter()
             self.logger.debug("==> filter is '%s'" % src_obj_filter)
+
             # put valid files into [todo] queue
-            for f in os.listdir(src_dir):
-                is_object_file = re.match(r'%s' % src_obj_filter, f)
-                if is_object_file:
-                    self.source_object_files += 1
-                    if is_object_file.group(1) > self.state_timestamp:
-                        item = {"id": is_object_file.group(1),
-                                "objects_filename": os.path.join(src_dir, f)}
-                        self.todo_queue.append(item)
+            # items into queue are limited by the 'todo_queue_limit' parameter
+            self.logger.debug("==> todo queue limit is set to '%s'" %
+                              self.todo_queue_limit)
+            for f in sorted_ls(src_dir):
+                if len(self.todo_queue) < self.todo_queue_limit:
+                    is_object_file = re.match(r'%s' % src_obj_filter, f)
+                    if is_object_file:
+                        self.source_object_files += 1
+                        if is_object_file.group(1) > self.state_timestamp:
+                            item = {"id": is_object_file.group(1),
+                                    "objects_filename": os.path.join(src_dir, f)}
+                            self.todo_queue.append(item)
 
             return len(self.todo_queue)
 
