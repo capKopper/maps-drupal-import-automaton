@@ -22,9 +22,4 @@ def configure():
     stream_handler.setFormatter(formatter)
     logger.addHandler(stream_handler)
 
-    # file_handler = logging.FileHandler(log_file)
-    # file_handler.setLevel(logging.DEBUG)
-    # file_handler.setFormatter(formatter)
-    # logger.addHandler(file_handler)
-
     return logger
