@@ -536,20 +536,3 @@ class Profile(object):
         self.logger.warning("sending alert message")
         for alerter in self.alerters:
             alerter.send(message)
-
-
-
-
-
-
-
-
-
-
-    def debug(self):
-        """Debug information."""
-        print "id: %s" % self.id
-        print "alias: %s" % self.alias
-        print "state_file: %s" % self.state_file
-        print "state_timestamp: %s" % self.state_timestamp
-        print "source_object_files: %s" % self.source_object_files
