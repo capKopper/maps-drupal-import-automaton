@@ -506,7 +506,7 @@ class Profile(object):
         # ... and write new timestamp
         with open(self.state_file, "w") as json_new:
             state["timestamp"] = job_id
-            json.dump(state, json_new, indent=4, sort_keys=True)
+            json.dump(state, json_new, indent=4)
             json_new.close()
 
     def _archive_logs(self, logdir, files):
