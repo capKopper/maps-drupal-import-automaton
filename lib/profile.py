@@ -8,6 +8,7 @@ import subprocess
 import re
 
 from lib.tools import add_symlink
+from lib.tools import sorted_ls
 from lib.identifier import SourceIdentifierInterface as SourceIdentifierInterface
 from lib.identifier import SourceIdentifierTimestamp as SourceIdentifierTimestamp
 
@@ -72,6 +73,7 @@ class Profile(object):
         self.log_dir = log_dir
         # queues
         self.todo_queue = []
+        self.todo_queue_limit = 0
         self.active_queue = []
         # external "components"
         self.logger = logger
@@ -95,7 +97,7 @@ class Profile(object):
             key = (int)(profile_key)
             self.id = key
             access_by = "id"
-        self.logger.debug("profile will be access by his '%s'" % access_by)
+        self.logger.debug("==> profile will be access by his '%s'" % access_by)
 
         # check if the profile exists into config...
         i = 0
@@ -105,8 +107,8 @@ class Profile(object):
 
             if config["profiles"][i][access_by] == key:
                 profile_found = True
-                self.logger.debug("profile '%s' found (access by '%s')" %
-                      (key, access_by))
+                self.logger.debug("==> profile '%s' found (access by '%s')" %
+                                  (key, access_by))
                 self.config = config["profiles"][i]
 
             i += 1
@@ -122,6 +124,14 @@ class Profile(object):
                                        self.config["alias"] + ".json")
         self.lock_file = os.path.join(config["state_dir"],
                                       self.config["alias"] + ".lock")
+
+        # set the todo queue limit based on configuration
+        # - default is 1
+        try:
+            todo_limit_queue = self.config["todo_queue_limit"]
+            self.todo_queue_limit = todo_limit_queue
+        except KeyError:
+            self.todo_queue_limit = 1
 
     def set_alerters(self, global_config):
         """Set alerters for the current profile."""
@@ -157,8 +167,8 @@ class Profile(object):
                                                  _sender, _recipients,
                                                  _subject, _message, _headers))
 
-                            self.logger.info("alerter '%s' was correcty initialize" %
-                                             alerter_class_id)
+                            self.logger.debug("==> alerter '%s' was correcty initialize" %
+                                              alerter_class_id)
 
                         except KeyError as e:
                             self.logger.error("AlertTransportMailConfigError(%s key error)" % e)
@@ -233,16 +243,21 @@ class Profile(object):
             src_dir = self.config["source"]["directory"]
             # get the filter pattern
             src_obj_filter = self._source_filter()
-            self.logger.debug("filter => '%s'" % src_obj_filter)
+            self.logger.debug("==> filter is '%s'" % src_obj_filter)
+
             # put valid files into [todo] queue
-            for f in os.listdir(src_dir):
-                is_object_file = re.match(r'%s' % src_obj_filter, f)
-                if is_object_file:
-                    self.source_object_files += 1
-                    if is_object_file.group(1) > self.state_timestamp:
-                        item = {"id": is_object_file.group(1),
-                                "objects_filename": os.path.join(src_dir, f)}
-                        self.todo_queue.append(item)
+            # items into queue are limited by the 'todo_queue_limit' parameter
+            self.logger.debug("==> todo queue limit is set to '%s'" %
+                              self.todo_queue_limit)
+            for f in sorted_ls(src_dir):
+                if len(self.todo_queue) < self.todo_queue_limit:
+                    is_object_file = re.match(r'%s' % src_obj_filter, f)
+                    if is_object_file:
+                        self.source_object_files += 1
+                        if is_object_file.group(1) > self.state_timestamp:
+                            item = {"id": is_object_file.group(1),
+                                    "objects_filename": os.path.join(src_dir, f)}
+                            self.todo_queue.append(item)
 
             return len(self.todo_queue)
 
@@ -257,7 +272,7 @@ class Profile(object):
             raise ProfileError("parameter '%s' isn't defined in config" %
                                param_id)
         else:
-            self.logger.debug("source objects class => '%s'" % cls_str)
+            self.logger.debug("==> source objects class is '%s'" % cls_str)
             cls = globals()[cls_str]
             instance = cls(param_id, "$", self.config["source"]["objects"])
             return instance.get_pattern()
@@ -300,7 +315,7 @@ class Profile(object):
           2. check if a config file is present for the [active] job
           3. set target symlinks
         """
-        self.logger.info("[todo] %s files to process" % len(self.todo_queue))
+        self.logger.debug("==> %s files to process" % len(self.todo_queue))
 
         while len(self.todo_queue) > 0:
             if len(self.active_queue) == 0:
@@ -323,7 +338,8 @@ class Profile(object):
                     self.logger.error("[active/%s] config file '%s' is absent"
                                      % (job_id,
                                         cfg_file))
-                    self._send_alert("the configuration file is absent '%s'" % cfg_file)
+                    self._send_alert("the configuration file is absent '%s'" %
+                                     cfg_file)
 
                 # remove the job from the [active] queue
                 self.active_queue = []
@@ -331,7 +347,7 @@ class Profile(object):
                 raise ProfileProcessingError("only one job is permitted \
                                               in [active] queue")
 
-        self.logger.info("[todo] all files has been processed")
+        self.logger.info("all files has been processed")
 
     def _check_object_config(self):
         """
@@ -437,7 +453,7 @@ class Profile(object):
         op_end_time = datetime.datetime.now()
 
         self._log_operation(operation, logdir,
-                             drush_out, drush_err)
+                            drush_out, drush_err)
         self._update_operation_state(operation, op_start_time, op_end_time)
 
     def _log_operation(self, operation, logdir, stdout, stderr):
@@ -505,7 +521,7 @@ class Profile(object):
         # ... and write new timestamp
         with open(self.state_file, "w") as json_new:
             state["timestamp"] = job_id
-            json.dump(state, json_new, indent=4, sort_keys=True)
+            json.dump(state, json_new, indent=4)
             json_new.close()
 
     def _archive_logs(self, logdir, files):
@@ -535,20 +551,3 @@ class Profile(object):
         self.logger.warning("sending alert message")
         for alerter in self.alerters:
             alerter.send(message)
-
-
-
-
-
-
-
-
-
-
-    def debug(self):
-        """Debug information."""
-        print "id: %s" % self.id
-        print "alias: %s" % self.alias
-        print "state_file: %s" % self.state_file
-        print "state_timestamp: %s" % self.state_timestamp
-        print "source_object_files: %s" % self.source_object_files

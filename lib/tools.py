@@ -23,3 +23,9 @@ def add_symlink(src, dest, force=False):
             os.symlink(src, dest)
         else:
             raise IOError("symlink creation failed")
+
+
+def sorted_ls(path):
+    """Return items into "path" directory sorted by modification time."""
+    mtime = lambda f: os.stat(os.path.join(path, f)).st_mtime
+    return list(sorted(os.listdir(path), key=mtime))

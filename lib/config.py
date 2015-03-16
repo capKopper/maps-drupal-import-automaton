@@ -42,6 +42,8 @@ class Config(object):
         """Parser configuration."""
         parser = argparse.ArgumentParser()
         parser.add_argument("--profile", "-p", help="profile")
+        parser.add_argument('--version', action='version',
+                            version='1.0.1')
 
         if parser.parse_args().profile is None:
             raise ConfigParserError("no profile specified")
